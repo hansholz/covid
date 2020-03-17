@@ -1,5 +1,6 @@
 import telebot
 from telebot import types
+import sqlite3
 from response import kyiv_doctors
 
 
@@ -19,23 +20,24 @@ def send_welcome(message):
 @bot.message_handler(commands=['choose_doctor'])
 def choose_doctor(message):
     key = types.InlineKeyboardMarkup()
-    with open("regions.txt") as reg:
-        id = 0
-        for region in reg:
-            id += 1
-            itembtn = types.InlineKeyboardButton(text=f"{region}", callback_data=f"{id}")
-            key.add(itembtn)
-    bot.send_message(message.chat.id, f'Which region you need?', reply_markup=key)
 
+    conn = sqlite3.connect('regions.sqlite3')
+    c = conn.cursor()
+    c.execute('SELECT * FROM regions')
+
+    data = list(c)
+    for region in data:
+        itembtn = types.InlineKeyboardButton(text=f"{region[1]}", callback_data=f"{region[0]}")
+        key.add(itembtn)
+    bot.send_message(message.chat.id, f'Which region you need? ', reply_markup=key)
+    conn.close()
 
 @bot.message_handler(content_types=['text'])
 def kyiv_region(message):
     # checking users answer
     key = types.InlineKeyboardMarkup()
-    id = 0
     for name in kyiv_doctors():
-        id += 1
-        itembtn = types.InlineKeyboardButton(text=f"{name}", callback_data=f"{id}")
+        itembtn = types.InlineKeyboardButton(text=f"{name}", callback_data=f"{name}")
         key.add(itembtn)
     bot.send_message(message.chat.id, f'In Kyiv region works:', reply_markup=key)
 
