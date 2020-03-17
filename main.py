@@ -28,13 +28,25 @@ def choose_doctor(message):
     bot.send_message(message.chat.id, f'Which region you need?', reply_markup=key)
 
 
+@bot.message_handler(content_types=['text'])
+def kyiv_region(message):
+    # checking users answer
+    key = types.InlineKeyboardMarkup()
+    id = 0
+    for name in kyiv_doctors():
+        id += 1
+        itembtn = types.InlineKeyboardButton(text=f"{name}", callback_data=f"{id}")
+        key.add(itembtn)
+    bot.send_message(message.chat.id, f'In Kyiv region works:', reply_markup=key)
+
+
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
     # checking which button have been pressed
     if call.data == "1":
         bot.send_message(call.message.chat.id, f'Vinnytsya')
     elif call.data == "9":
-        bot.send_message(call.message.chat.id, f'{kyiv_doctors()}')
+        kyiv_region(call.message)
 
 
 bot.skip_pending = True
