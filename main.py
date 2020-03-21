@@ -42,8 +42,17 @@ def search_a_doctor(message):
 
 @bot.message_handler(content_types=['text'])
 def information_from_input_fn_ln(message):
-    inform = get_inf(message.text)
-    bot.reply_to(message, inform)
+    key = types.InlineKeyboardMarkup()
+    if len(get_inf(message.text)) > 1:
+        data = get_inf(message.text)
+        for doctor in data:
+            inform = doctor.rsplit(' ')
+            itembtn = types.InlineKeyboardButton(text=f"{inform[0]} {inform[1]}", callback_data=f"{inform[0]}_{inform[1]}")
+            key.add(itembtn)
+        bot.send_message(message.chat.id, f'Doctors with name "{message.text}"', reply_markup=key)
+
+    else:
+        bot.reply_to(message, get_inf(message.text))
 
 
 @bot.message_handler(content_types=['text'])
@@ -55,12 +64,9 @@ def information_from_input_fn_ln(message):
 def callback_inline(call):
     if call.data == 'w_fn_ls':
         information_from_input_fn_ln(call.message)
-    #else:
-    #    search_a_doctor(call.message)
+    else:
+        bot.reply_to(call.message, get_inf(str(call.data).replace('_', ' ')))
 
-
-    # checking which button have been pressed
-    # areas(call.message, f'{call.data}')
 
 
 bot.skip_pending = True

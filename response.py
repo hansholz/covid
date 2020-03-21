@@ -15,14 +15,19 @@ def get_inf(doctor_name):
     response = requests.get(f'https://helsi.me/api/healthy/doctors?limit=30&name={doctor_name}')
     if response.status_code == 200:
         data = response.json()['data']
-        try:
-            name = (f"{data[0]['firstName']} {data[0]['lastName']}")
-            organization = data[0]['organization']['name']
-            speciality = data[0]['speciality'][0]['name']
-            return [(f'{name} \n \n'
-              f'Організація:\n'
-              f' {organization} \n \n'
-              f'Спеціалізація: \n '
-              f'{speciality} \n \n')]
-        except IndexError:
-            return 'Wrong name'
+        list_of_doctors = []
+        index = (len(data) - 1)
+        while index !=(-1):
+            try:
+                name = (f"{data[index]['firstName']} {data[index]['lastName']}")
+                organization = data[index]['organization']['name']
+                speciality = data[index]['speciality'][0]['name']
+                list_of_doctors.append((f'{name} \n \n'
+                f'Організація:\n'
+                f' {organization} \n \n'
+                f'Спеціалізація: \n '
+                f'{speciality} \n \n'))
+            except IndexError:
+                print( 'Wrong name')
+            index -= 1
+        return list_of_doctors
