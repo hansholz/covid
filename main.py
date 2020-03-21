@@ -1,7 +1,8 @@
 import telebot
 from telebot import types
 import sqlite3
-from response import kyiv_doctors
+from response import get_inf
+
 
 with open("token.txt") as f:
     token = f.read().strip()
@@ -18,6 +19,14 @@ def send_welcome(message):
 @bot.message_handler(commands=['choose_doctor'])
 def choose_doctor(message):
     key = types.InlineKeyboardMarkup()
+    itembtn = types.InlineKeyboardButton(text=f"With firstname and lastname", callback_data=f"w_fn_ls")
+    key.add(itembtn)
+    bot.send_message(message.chat.id, f'How i can help you to find doctor?', reply_markup=key)
+
+
+@bot.message_handler(commands=['regions'])
+def search_a_doctor(message):
+    key = types.InlineKeyboardMarkup()
 
     conn = sqlite3.connect('regions.sqlite3')
     c = conn.cursor()
@@ -32,36 +41,26 @@ def choose_doctor(message):
 
 
 @bot.message_handler(content_types=['text'])
-def areas(message, region):
-    key = types.InlineKeyboardMarkup()
-
-    conn = sqlite3.connect('regions.sqlite3')
-    c = conn.cursor()
-    c.execute(f'SELECT region FROM regions WHERE id = {region};')
-    reg_centrum = list(c)[0][0]
-    c.execute(f'SELECT {reg_centrum.replace(" ", "_")} FROM areas')
-
-    data = list(c)
-    for name in data:
-        if name[0] is not None:
-            itembtn = types.InlineKeyboardButton(text=f"{name[0]}", callback_data=f"{name[0].replace(' ', '_')}")
-            key.add(itembtn)
-    bot.send_message(message.chat.id, f'Choose your area:', reply_markup=key)
+def information_from_input_fn_ln(message):
+    inform = get_inf(message.text)
+    bot.reply_to(message, inform)
 
 
 @bot.message_handler(content_types=['text'])
-def doctors_in_area(message):
-    key = types.InlineKeyboardMarkup()
-    for name in kyiv_doctors():
-        itembtn = types.InlineKeyboardButton(text=f"{name}", callback_data=f"{name}")
-        key.add(itembtn)
-    bot.send_message(message.chat.id, f'In Kyiv region works:', reply_markup=key)
+def information_from_input_fn_ln(message):
+    bot.send_message(message.chat.id, f'Enter first name and last name:')
 
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
+    if call.data == 'w_fn_ls':
+        information_from_input_fn_ln(call.message)
+    #else:
+    #    search_a_doctor(call.message)
+
+
     # checking which button have been pressed
-    areas(call.message, f'{call.data}')
+    # areas(call.message, f'{call.data}')
 
 
 bot.skip_pending = True
