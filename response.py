@@ -1,14 +1,14 @@
 import requests
 
 
-def area_doctors():
-    response = requests.get('https://helsi.me/api/healthy/doctors?page=1&settlement=1&speciality=сімейний%20лікар')
+def specialty():
+    response = requests.get('https://helsi.me/api/healthy/specialities')
     if response.status_code == 200:
-        data = response.json()['data']
-        return [f'{item["firstName"]} {item["lastName"]}' for item in data]
-
-
-
+        data = response.json()
+        list = []
+        for name in data:
+            list.append(name['name'])
+        return list
 
 
 def get_inf(doctor_name):
@@ -19,15 +19,26 @@ def get_inf(doctor_name):
         index = (len(data) - 1)
         while index !=(-1):
             try:
+                resource_id = data[index]['resourceId']
+                response_resource_id = requests.get(f'https://helsi.me/api/healthy/doctors/{resource_id}')
+                if response_resource_id.status_code == 200:
+                    id_data = response_resource_id.json()
                 name = (f"{data[index]['firstName']} {data[index]['lastName']}")
                 organization = data[index]['organization']['name']
                 speciality = data[index]['speciality'][0]['name']
+                address = data[index]['organization']['addresses']['address']['addressText']
+                phone = id_data['contactPhones'][0]
+
                 list_of_doctors.append((f'{name} \n \n'
                 f'Організація:\n'
-                f' {organization} \n \n'
+                f' {organization} \n '
+                f'{address} \n \n'
                 f'Спеціалізація: \n '
-                f'{speciality} \n \n'))
+                f'{speciality} \n \n'
+                f'Робочий телефон: \n '
+                f'{phone} \n \n'))
             except IndexError:
-                print( 'Wrong name')
+                print('Wrong name')
             index -= 1
         return list_of_doctors
+
