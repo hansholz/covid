@@ -1,14 +1,42 @@
 import requests
+import sqlite3
 
 
-def specialty():
-    response = requests.get('https://helsi.me/api/healthy/specialities')
+def doctors_from_specialty(speciality):
+    response = requests.get(f'https://helsi.me/api/healthy/doctors?speciality={speciality}')
+    if response.status_code == 200:
+        data = response.json()['data']
+        list_of_doctors = []
+        index = (len(data) - 1)
+        while index != (-1):
+            name = (f"{data[index]['firstName']} {data[index]['lastName']}")
+            list_of_doctors.append(name)
+            index -= 1
+        return list_of_doctors
+
+
+def search_of_city(city_name):
+    response = requests.get(f'https://helsi.me/api/addressservice/settlements?search={city_name}')
     if response.status_code == 200:
         data = response.json()
-        list = []
-        for name in data:
-            list.append(name['name'])
-        return list
+        list_of_cities = []
+        index = (len(data) - 1)
+
+        conn = sqlite3.connect('regions.sqlite3')
+        c = conn.cursor()
+        c.execute('CREATE TABLE IF NOT EXISTS ident_city (city_name TEXT NOT NULL, city_id INTEGER NOT NULL)')
+
+        while index != (-1):
+            city_name = data[index]['name']
+            region = data[index]['region']
+            city_id = data[index]['id']
+
+            c.execute(f'INSERT INTO ident_city (city_name, city_id) SELECT "{city_name}", "{city_id}" WHERE NOT EXISTS(SELECT 1 FROM ident_city WHERE city_name = "{city_name}" AND city_id = "{city_id}");')
+            conn.commit()
+
+            list_of_cities.insert(0, f'{city_name}')
+            index -= 1
+        return list_of_cities
 
 
 def get_inf(doctor_name):
@@ -41,4 +69,3 @@ def get_inf(doctor_name):
                 print('Wrong name')
             index -= 1
         return list_of_doctors
-

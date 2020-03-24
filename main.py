@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 import sqlite3
 from response import get_inf
-from response import specialty
+from response import search_of_city
 
 
 with open("token.txt") as f:
@@ -20,21 +20,29 @@ def send_welcome(message):
 @bot.message_handler(commands=['choose_doctor'])
 def choose_doctor(message):
     key = types.InlineKeyboardMarkup()
-    itembtn = types.InlineKeyboardButton(text=f"With firstname and lastname", callback_data=f"w_fn_ls")
-    itembtn2 = types.InlineKeyboardButton(text=f"With special", callback_data=f"w_s")
+    itembtn = types.InlineKeyboardButton(text=f"За прізвищем", callback_data=f"w_fn_ls")
+    itembtn2 = types.InlineKeyboardButton(text=f"За спеціальністю", callback_data=f"w_s")
     key.add(itembtn)
     key.add(itembtn2)
-    bot.send_message(message.chat.id, f'How i can help you to find doctor?', reply_markup=key)
-
-
-@bot.message_handler(commands=['special'])
-def special(message):
-    bot.send_message(message.chat.id, f'Введіть першу букву:')
-    search_with_alph(message)
+    bot.send_message(message.chat.id, f'Яким чином ви хочете знайти лікаря?', reply_markup=key)
 
 
 @bot.message_handler(content_types=['text'])
 def search_with_alph(message):
+    quest_msg = bot.send_message(message.chat.id, f'Введіть назву міста, в якому ви хочете знайти лікаря:')
+    bot.register_next_step_handler(quest_msg, identify_city)
+
+
+def identify_city(message):
+    key = types.InlineKeyboardMarkup()
+    data = search_of_city(message.text)
+    for city in data:
+        itembtn = types.InlineKeyboardButton(text=f"{city}", callback_data=f"{city.replace(' ', '_')}")
+        key.add(itembtn)
+    bot.send_message(message.chat.id, f'Міста за запитом: "{message.text}" \nОберіть необхідне ', reply_markup=key)
+
+
+def get_inf_specialty(message):
     key = types.InlineKeyboardMarkup()
 
     conn = sqlite3.connect('regions.sqlite3')
@@ -52,31 +60,13 @@ def search_with_alph(message):
         bot.send_message(message.chat.id, f'Спеціальності на букву: {first}', reply_markup=key)
 
 
-@bot.message_handler(commands=['regions'])
-def search_a_doctor(message):
-    key = types.InlineKeyboardMarkup()
-
-    conn = sqlite3.connect('regions.sqlite3')
-    c = conn.cursor()
-    c.execute('SELECT * FROM regions')
-
-    data = list(c)
-    for region in data:
-        itembtn = types.InlineKeyboardButton(text=f"{region[1]}", callback_data=f"{region[0]}")
-        key.add(itembtn)
-    bot.send_message(message.chat.id, f'Which region you need? ', reply_markup=key)
-    conn.close()
-
-
-@bot.message_handler(content_types=['flln'])
-def information_from_input_fn_ln(message):
-    bot.send_message(message.chat.id, f'Enter first name and last name:')
-    if message.text is not None:
-        information_from_input(message)
-
-
 @bot.message_handler(content_types=['text'])
-def information_from_input(message):
+def information_about_doctors(message):
+    quest_msg = bot.send_message(message.chat.id, f'Введіть прізвище лікаря:')
+    bot.register_next_step_handler(quest_msg, get_inf_about_dctr)
+
+
+def get_inf_about_dctr(message):
     key = types.InlineKeyboardMarkup()
     if len(get_inf(message.text)) > 1:
         data = get_inf(message.text)
@@ -84,7 +74,7 @@ def information_from_input(message):
             inform = doctor.rsplit(' ')
             itembtn = types.InlineKeyboardButton(text=f"{inform[0]} {inform[1]}", callback_data=f"{inform[0]}_{inform[1]}")
             key.add(itembtn)
-        bot.send_message(message.chat.id, f'Doctors with name "{message.text}"', reply_markup=key)
+        bot.send_message(message.chat.id, f'Лікарі за запитом: "{message.text}"', reply_markup=key)
 
     else:
         bot.reply_to(message, get_inf(message.text))
@@ -92,10 +82,19 @@ def information_from_input(message):
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
+    conn = sqlite3.connect('regions.sqlite3')
+    c = conn.cursor()
+    c.execute('SELECT * FROM ident_city')
+    cities = []
+    for city in list(c):
+        cities.append(city[0].replace(' ', '_'))
+
     if call.data == 'w_fn_ls':
-        information_from_input_fn_ln(call.message)
+        information_about_doctors(call.message)
     elif call.data == 'w_s':
-        special(call.message)
+        search_with_alph(call.message)
+    elif call.data in cities:
+        get_inf_specialty(call.message)
     else:
         bot.reply_to(call.message, get_inf(str(call.data).replace('_', ' ')))
 
