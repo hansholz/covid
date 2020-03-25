@@ -3,6 +3,7 @@ from telebot import types
 import sqlite3
 from response import get_inf
 from response import search_of_city
+from response import doctors_from_specialty
 
 
 with open("token.txt") as f:
@@ -42,6 +43,12 @@ def identify_city(message):
     bot.send_message(message.chat.id, f'Міста за запитом: "{message.text}" \nОберіть необхідне ', reply_markup=key)
 
 
+@bot.message_handler(content_types=['text'])
+def enter_first_symbol(message):
+    quest_msg = bot.send_message(message.chat.id, f'Введіть першу букву назви спеціальності:')
+    bot.register_next_step_handler(quest_msg, get_inf_specialty)
+
+
 def get_inf_specialty(message):
     key = types.InlineKeyboardMarkup()
 
@@ -55,9 +62,33 @@ def get_inf_specialty(message):
     if first in alph:
         for spclty in data:
             if str(spclty[1])[0].lower() == first:
-                itembtn = types.InlineKeyboardButton(text=f"{spclty[1]}", callback_data=f"{spclty[0]}")
+                itembtn = types.InlineKeyboardButton(text=f"{spclty[1]}", callback_data=f"{spclty[1].replace(' ', '_')}")
                 key.add(itembtn)
-        bot.send_message(message.chat.id, f'Спеціальності на букву: {first}', reply_markup=key)
+    bot.send_message(message.chat.id, f'Спеціальності на букву: {message.text}', reply_markup=key)
+
+
+def doctors_in_area(message):
+    key = types.InlineKeyboardMarkup()
+
+    conn = sqlite3.connect('regions.sqlite3')
+    c = conn.cursor()
+    c.execute(f'SELECT city FROM session WHERE user_id = {message.chat.id};')
+    city_name = list(c)[0]
+    c.execute(f'SELECT speciality FROM session WHERE user_id = {message.chat.id};')
+    speciality = list(c)[0]
+    c.execute(f'SELECT city_id FROM ident_city WHERE city_name = "{city_name}";')
+
+    city_data = list(c)
+    print(city_data)
+    data = doctors_from_specialty(speciality, city_id)
+    if len(data) > 1:
+        for doctor in data:
+            inform = doctor.rsplit(' ')
+            itembtn = types.InlineKeyboardButton(text=f"{inform[0]} {inform[1]}", callback_data=f"{inform[0]}_{inform[1]}")
+            key.add(itembtn)
+        bot.send_message(message.chat.id, f'Лікарі в місті {city_name} за спеціальністю {speciality}:', reply_markup=key)
+    else:
+        bot.reply_to(message, doctors_from_specialty(message.text, city_id))
 
 
 @bot.message_handler(content_types=['text'])
@@ -84,17 +115,42 @@ def get_inf_about_dctr(message):
 def callback_inline(call):
     conn = sqlite3.connect('regions.sqlite3')
     c = conn.cursor()
+
     c.execute('SELECT * FROM ident_city')
     cities = []
     for city in list(c):
         cities.append(city[0].replace(' ', '_'))
+
+    c.execute('SELECT * FROM specialty')
+    specialtys = []
+    for specialty in list(c):
+        specialtys.append(specialty[1].replace(' ', '_'))
+
+    columns = 'user_id INTEGER, ' \
+              'city TEXT, ' \
+              'speciality TEXT'
+    c.execute(f'CREATE TABLE IF NOT EXISTS session ({columns})')
+    user_id = call.from_user.id
+    c.execute(f'INSERT INTO session (user_id) SELECT "{user_id}" WHERE NOT EXISTS(SELECT 1 FROM session WHERE user_id = "{user_id}");')
 
     if call.data == 'w_fn_ls':
         information_about_doctors(call.message)
     elif call.data == 'w_s':
         search_with_alph(call.message)
     elif call.data in cities:
-        get_inf_specialty(call.message)
+
+        c.execute(f'UPDATE session SET city = "{call.data}" WHERE user_id = {user_id};')
+        conn.commit()
+        conn.close()
+
+        enter_first_symbol(call.message)
+    elif call.data in specialtys:
+
+        c.execute(f'UPDATE session SET speciality = "{call.data}" WHERE user_id = {user_id};')
+        conn.commit()
+        conn.close()
+
+        doctors_in_area(call.message)
     else:
         bot.reply_to(call.message, get_inf(str(call.data).replace('_', ' ')))
 

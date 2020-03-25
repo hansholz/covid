@@ -2,8 +2,8 @@ import requests
 import sqlite3
 
 
-def doctors_from_specialty(speciality):
-    response = requests.get(f'https://helsi.me/api/healthy/doctors?speciality={speciality}')
+def doctors_from_specialty(speciality, city_id):
+    response = requests.get(f'https://helsi.me/api/healthy/doctors?settlement={city_id}&speciality={speciality}')
     if response.status_code == 200:
         data = response.json()['data']
         list_of_doctors = []
