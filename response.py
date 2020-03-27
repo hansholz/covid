@@ -24,18 +24,20 @@ def search_of_city(city_name):
 
         conn = sqlite3.connect('regions.sqlite3')
         c = conn.cursor()
-        c.execute('CREATE TABLE IF NOT EXISTS ident_city (city_name TEXT NOT NULL, city_id INTEGER NOT NULL)')
+        c.execute('CREATE TABLE IF NOT EXISTS ident_city (city_name TEXT NOT NULL, city_id INTEGER NOT NULL, region_name TEXT NOT NULL)')
+        conn.commit()
 
         while index != (-1):
             city_name = data[index]['name']
             region = data[index]['region']
             city_id = data[index]['id']
 
-            c.execute(f'INSERT INTO ident_city (city_name, city_id) SELECT "{city_name}", "{city_id}" WHERE NOT EXISTS(SELECT 1 FROM ident_city WHERE city_name = "{city_name}" AND city_id = "{city_id}");')
+            c.execute(f'INSERT INTO ident_city (city_name, city_id, region_name) SELECT "{city_name}", "{city_id}", "{region}" WHERE NOT EXISTS(SELECT 1 FROM ident_city WHERE city_name = "{city_name}" AND city_id = "{city_id}" AND region_name = "{region}");')
             conn.commit()
 
-            list_of_cities.insert(0, f'{city_name}')
+            list_of_cities.insert(0, f'{city_name.replace(" ", "_")} ({region})')
             index -= 1
+        print(list_of_cities)
         return list_of_cities
 
 
