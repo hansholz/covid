@@ -4,6 +4,7 @@ import sqlite3
 from response import get_inf
 from response import search_of_city
 from response import doctors_from_specialty
+from response import get_inf_about_doctor
 
 
 with open("token.txt") as f:
@@ -73,17 +74,21 @@ def doctors_in_area(message):
     conn = sqlite3.connect('regions.sqlite3')
     c = conn.cursor()
     c.execute(f'SELECT city FROM session WHERE user_id = {message.chat.id};')
-    city_name = list(c)[0]
+    city_name = list(c)[0][0]
     c.execute(f'SELECT speciality FROM session WHERE user_id = {message.chat.id};')
-    speciality = list(c)[0]
+    speciality = list(c)[0][0]
     c.execute(f'SELECT city_id FROM ident_city WHERE city_name = "{city_name}";')
+    city_id = list(c)[0][0]
 
-    city_data = list(c)
-    print(city_data)
     data = doctors_from_specialty(speciality, city_id)
     if len(data) > 1:
         for doctor in data:
             inform = doctor.rsplit(' ')
+
+            c.execute('CREATE TABLE IF NOT EXISTS doctors (doctor TEXT NOT NULL)')
+            c.execute(f'INSERT INTO doctors (doctor) SELECT "{inform[0]} {inform[1]}" WHERE NOT EXISTS(SELECT 1 FROM doctors WHERE doctor = "{inform[0]} {inform[1]}");')
+            conn.commit()
+
             itembtn = types.InlineKeyboardButton(text=f"{inform[0]} {inform[1]}", callback_data=f"{inform[0]}_{inform[1]}")
             key.add(itembtn)
         bot.send_message(message.chat.id, f'Лікарі в місті {city_name} за спеціальністю {speciality}:', reply_markup=key)
@@ -98,9 +103,10 @@ def information_about_doctors(message):
 
 
 def get_inf_about_dctr(message):
+
     key = types.InlineKeyboardMarkup()
     if len(get_inf(message.text)) > 1:
-        data = get_inf(message.text)
+        data = get_inf(message.text.replace('_', ' '))
         for doctor in data:
             inform = doctor.rsplit(' ')
             itembtn = types.InlineKeyboardButton(text=f"{inform[0]} {inform[1]}", callback_data=f"{inform[0]}_{inform[1]}")
@@ -121,6 +127,11 @@ def callback_inline(call):
     for city in list(c):
         cities.append(city[0].replace(' ', '_'))
 
+    c.execute('SELECT * FROM doctors')
+    doctors = []
+    for doctor in list(c):
+        doctors.append(doctor[0].replace(' ', '_'))
+
     c.execute('SELECT * FROM specialty')
     specialtys = []
     for specialty in list(c):
@@ -128,10 +139,12 @@ def callback_inline(call):
 
     columns = 'user_id INTEGER, ' \
               'city TEXT, ' \
-              'speciality TEXT'
+              'speciality TEXT' \
+              'doctor TEXT'
     c.execute(f'CREATE TABLE IF NOT EXISTS session ({columns})')
     user_id = call.from_user.id
     c.execute(f'INSERT INTO session (user_id) SELECT "{user_id}" WHERE NOT EXISTS(SELECT 1 FROM session WHERE user_id = "{user_id}");')
+    conn.commit()
 
     if call.data == 'w_fn_ls':
         information_about_doctors(call.message)
@@ -151,8 +164,8 @@ def callback_inline(call):
         conn.close()
 
         doctors_in_area(call.message)
-    else:
-        bot.reply_to(call.message, get_inf(str(call.data).replace('_', ' ')))
+    elif call.data in doctors:
+        bot.reply_to(call.message, get_inf_about_doctor(str(call.data).replace('_', ' ')))
 
 
 bot.skip_pending = True
