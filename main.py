@@ -1,11 +1,9 @@
 import telebot
-import time
 from telebot import types
 import sqlite3
 from response import get_inf
 from response import search_of_city
 from response import doctors_from_specialty
-from response import get_inf_about_doctor
 
 
 with open("token.txt") as f:
@@ -37,25 +35,28 @@ def search_with_alph(message):
 
 
 def identify_city(message):
-    key = types.InlineKeyboardMarkup()
-    data = search_of_city(message.text)
-
-    if len(data) < 1:
-        bot.send_message(message.chat.id, f'За вашим запитом нічого не знайдено :( \nПовторіть спробу')
-        search_with_alph(message)
+    if message.text == '/choose_doctor':
+        choose_doctor(message)
     else:
-        for city in data:
+        key = types.InlineKeyboardMarkup()
+        data = search_of_city(message.text)
 
-            conn = sqlite3.connect('regions.sqlite3')
-            c = conn.cursor()
-            city_name = (city[:(city.index(" "))])
-            region_name = city[((city.index("("))+1):-1]
-            c.execute(f'SELECT city_id FROM ident_city WHERE city_name = "{city_name.replace("_", " ")}" AND region_name = "{region_name}";')
-            city_id = list(c)
+        if len(data) < 1:
+            bot.send_message(message.chat.id, f'За вашим запитом нічого не знайдено :( \nПовторіть спробу')
+            search_with_alph(message)
+        else:
+            for city in data:
 
-            itembtn = types.InlineKeyboardButton(text=f"{city.replace('_', ' ')}", callback_data=f"{city_id[0][0]}")
-            key.add(itembtn)
-        bot.send_message(message.chat.id, f'Міста за запитом: "{message.text}" \nОберіть необхідне ', reply_markup=key)
+                conn = sqlite3.connect('regions.sqlite3')
+                c = conn.cursor()
+                city_name = (city[:(city.index(" "))])
+                region_name = city[((city.index("("))+1):-1]
+                c.execute(f'SELECT city_id FROM ident_city WHERE city_name = "{city_name.replace("_", " ")}" AND region_name = "{region_name}";')
+                city_id = list(c)
+
+                itembtn = types.InlineKeyboardButton(text=f"{city.replace('_', ' ')}", callback_data=f"{city_id[0][0]}")
+                key.add(itembtn)
+            bot.send_message(message.chat.id, f'Міста за запитом: "{message.text}" \nОберіть необхідне ', reply_markup=key)
 
 
 @bot.message_handler(content_types=['first_symbol'])
@@ -65,24 +66,27 @@ def enter_first_symbol(message):
 
 
 def get_inf_specialty(message):
-    key = types.InlineKeyboardMarkup()
-    if len(message.text) > 1:
-        bot.send_message(message.chat.id, f'Введіть тільки одну букву')
-        enter_first_symbol(message)
+    if message.text == '/choose_doctor':
+        choose_doctor(message)
     else:
-        conn = sqlite3.connect('regions.sqlite3')
-        c = conn.cursor()
-        c.execute('SELECT * FROM specialty')
+        key = types.InlineKeyboardMarkup()
+        if len(message.text) > 1:
+            bot.send_message(message.chat.id, f'Введіть тільки одну букву')
+            enter_first_symbol(message)
+        else:
+            conn = sqlite3.connect('regions.sqlite3')
+            c = conn.cursor()
+            c.execute('SELECT * FROM specialty')
 
-        data = list(c)
-        first = str(message.text).strip().lower()
-        alph = ('а б в г д е є ж з и і ї й к л м н о п р с т у х ч щ ю я').split(' ')
-        if first in alph:
-            for spclty in data:
-                if str(spclty[1])[0].lower() == first:
-                    itembtn = types.InlineKeyboardButton(text=f"{spclty[1]}", callback_data=f"{spclty[1].replace(' ', '_')}")
-                    key.add(itembtn)
-        bot.send_message(message.chat.id, f'Спеціальності на букву: {message.text}', reply_markup=key)
+            data = list(c)
+            first = str(message.text).strip().lower()
+            alph = ('а б в г д е є ж з и і ї й к л м н о п р с т у х ч щ ю я').split(' ')
+            if first in alph:
+                for spclty in data:
+                    if str(spclty[1])[0].lower() == first:
+                        itembtn = types.InlineKeyboardButton(text=f"{spclty[1]}", callback_data=f"{spclty[1].replace(' ', '_')}")
+                        key.add(itembtn)
+            bot.send_message(message.chat.id, f'Спеціальності на букву: {message.text}', reply_markup=key)
 
 
 def doctors_in_area(message):
@@ -123,26 +127,29 @@ def information_about_doctors(message):
 
 
 def get_inf_about_dctr(message):
-    key = types.InlineKeyboardMarkup()
-    if len(get_inf(message.text)) < 1:
-        bot.send_message(message.chat.id, f'За вашим запитом нічого не знайдено :( \nПовторіть спробу')
-        information_about_doctors(message)
-    if len(get_inf(message.text)) > 1:
-        data = get_inf(message.text.replace('_', ' '))
-        for doctor in data:
-            inform = doctor.rsplit(' ')
-
-            conn = sqlite3.connect('regions.sqlite3')
-            c = conn.cursor()
-            c.execute(f'INSERT INTO doctors (doctor) SELECT "{inform[0]} {inform[1]}" WHERE NOT EXISTS(SELECT 1 FROM doctors WHERE doctor = "{inform[0]} {inform[1]}");')
-            conn.commit()
-
-            itembtn = types.InlineKeyboardButton(text=f"{inform[0]} {inform[1]}", callback_data=f"{inform[0]}_{inform[1]}")
-            key.add(itembtn)
-        bot.send_message(message.chat.id, f'Лікарі за запитом: "{message.text}"', reply_markup=key)
-
+    if message.text == '/choose_doctor':
+        choose_doctor(message)
     else:
-        bot.reply_to(message, get_inf(message.text))
+        key = types.InlineKeyboardMarkup()
+        if len(get_inf(message.text)) < 1:
+            bot.send_message(message.chat.id, f'За вашим запитом нічого не знайдено :( \nПовторіть спробу')
+            information_about_doctors(message)
+        if len(get_inf(message.text)) > 1:
+            data = get_inf(message.text.replace('_', ' '))
+            for doctor in data:
+                inform = doctor.rsplit(' ')
+
+                conn = sqlite3.connect('regions.sqlite3')
+                c = conn.cursor()
+                c.execute(f'INSERT INTO doctors (doctor) SELECT "{inform[0]} {inform[1]}" WHERE NOT EXISTS(SELECT 1 FROM doctors WHERE doctor = "{inform[0]} {inform[1]}");')
+                conn.commit()
+
+                itembtn = types.InlineKeyboardButton(text=f"{inform[0]} {inform[1]}", callback_data=f"{inform[0]}_{inform[1]}")
+                key.add(itembtn)
+            bot.send_message(message.chat.id, f'Лікарі за запитом: "{message.text}"', reply_markup=key)
+
+        else:
+            bot.reply_to(message, get_inf(message.text))
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -193,8 +200,9 @@ def callback_inline(call):
 
         doctors_in_area(call.message)
     elif call.data in doctors:
-        bot.reply_to(call.message, get_inf_about_doctor(str(call.data).replace('_', ' ')))
+        bot.reply_to(call.message, get_inf(str(call.data).replace('_', ' ')))
 
 
-bot.skip_pending = True
-bot.polling(none_stop=True, interval=0)
+if __name__ == '__main__':
+    bot.skip_pending = True
+    bot.polling(none_stop=True, interval=0)

@@ -37,7 +37,6 @@ def search_of_city(city_name):
 
             list_of_cities.insert(0, f'{city_name.replace(" ", "_")} ({region})')
             index -= 1
-        print(list_of_cities)
         return list_of_cities
 
 
@@ -48,53 +47,25 @@ def get_inf(doctor_name):
         list_of_doctors = []
         index = (len(data) - 1)
         while index !=(-1):
+            resource_id = data[index]['resourceId']
+            response_resource_id = requests.get(f'https://helsi.me/api/healthy/doctors/{resource_id}')
+            if response_resource_id.status_code == 200:
+                id_data = response_resource_id.json()
+            name = (f"{data[index]['firstName']} {data[index]['lastName']}")
+            organization = data[index]['organization']['name']
+            speciality = data[index]['speciality'][0]['name']
+            address = data[index]['organization']['addresses']['address']['addressText']
             try:
-                resource_id = data[index]['resourceId']
-                response_resource_id = requests.get(f'https://helsi.me/api/healthy/doctors/{resource_id}')
-                if response_resource_id.status_code == 200:
-                    id_data = response_resource_id.json()
-                name = (f"{data[index]['firstName']} {data[index]['lastName']}")
-                organization = data[index]['organization']['name']
-                speciality = data[index]['speciality'][0]['name']
-                address = data[index]['organization']['addresses']['address']['addressText']
                 phone = id_data['contactPhones'][0]
-
-                list_of_doctors.append((f'{name} \n \n'
-                f'Організація:\n'
-                f' {organization} \n '
-                f'{address} \n \n'
-                f'Спеціалізація: \n '
-                f'{speciality} \n \n'
-                f'Робочий телефон: \n '
-                f'{phone} \n \n'))
             except IndexError:
-                print('Wrong name')
+                phone = 'не вказано'
+            list_of_doctors.append((f'{name} \n \n'
+                    f'Організація:\n'
+                    f' {organization} \n '
+                    f'{address} \n \n'
+                    f'Спеціалізація: \n '
+                    f'{speciality} \n \n'
+                    f'Робочий телефон: \n '
+                    f'{phone} \n \n'))
             index -= 1
         return list_of_doctors
-
-
-def get_inf_about_doctor(doctor_name):
-    response = requests.get(f'https://helsi.me/api/healthy/doctors?limit=30&name={doctor_name}')
-    if response.status_code == 200:
-        data = response.json()['data']
-        resource_id = data[0]['resourceId']
-        response_resource_id = requests.get(f'https://helsi.me/api/healthy/doctors/{resource_id}')
-        id_data = response_resource_id.json()
-        name = (f"{data[0]['firstName']} {data[0]['lastName']}")
-        organization = data[0]['organization']['name']
-        speciality = data[0]['speciality'][0]['name']
-        address = data[0]['organization']['addresses']['address']['addressText']
-        phone = id_data['contactPhones']
-        if not phone:
-            phone = 'Не вказано'
-        list_of_doctors = []
-        list_of_doctors.append((f'{name} \n \n'
-                                f'Організація:\n'
-                                f' {organization} \n '
-                                f'{address} \n \n'
-                                f'Спеціалізація: \n '
-                                f'{speciality} \n \n'
-                                f'Робочий телефон: \n '
-                                f'{phone} \n \n'))
-        return list_of_doctors[0]
-
