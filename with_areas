@@ -1,0 +1,34 @@
+@bot.message_handler(content_types=['text'])
+def areas(message, region):
+    key = types.InlineKeyboardMarkup()
+
+    conn = sqlite3.connect('regions.sqlite3')
+    c = conn.cursor()
+    c.execute(f'SELECT region FROM regions WHERE id = {region};')
+    reg_centrum = list(c)[0][0]
+    c.execute(f'SELECT {reg_centrum.replace(" ", "_")} FROM areas')
+
+    data = list(c)
+    for name in data:
+        if name[0] is not None:
+            itembtn = types.InlineKeyboardButton(text=f"{name[0]}", callback_data=f"{name[0].replace(' ', '_')}")
+            key.add(itembtn)
+    bot.send_message(message.chat.id, f'Choose your area:', reply_markup=key)
+    conn.close()
+
+# for regions
+
+@bot.message_handler(commands=['regions'])
+def search_a_doctor(message):
+    key = types.InlineKeyboardMarkup()
+
+    conn = sqlite3.connect('regions.sqlite3')
+    c = conn.cursor()
+    c.execute('SELECT * FROM regions')
+
+    data = list(c)
+    for region in data:
+        itembtn = types.InlineKeyboardButton(text=f"{region[1]}", callback_data=f"{region[0]}")
+        key.add(itembtn)
+    bot.send_message(message.chat.id, f'Which region you need? ', reply_markup=key)
+    conn.close()
